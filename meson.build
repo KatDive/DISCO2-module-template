@@ -1,5 +1,5 @@
-project('example', 'c', 'cpp')
-project_name = 'example'
+project('firsttest', 'c', 'cpp')
+project_name = 'firsttest'
 
 # Compiler and linker flags
 cflags = ['-Wall']
@@ -9,7 +9,7 @@ proto_c_dep = meson.get_compiler('c').find_library('protobuf-c', required : fals
 
 # Source files
 sources = [
-    'src/module_template.c', # module file (REMEMBER TO CHANGE!)
+    'src/firsttest.c', # module file (REMEMBER TO CHANGE!)
     'src/utils/memory_util.c',
     'src/utils/config_util.c',
     'src/utils/batch_util.c',
@@ -30,7 +30,7 @@ shared_library(project_name, sources,
     dependencies: [proto_c_dep]
 )
 
-# Check for cross-compiling
+# Check for cross-compiling 
 if not get_option('cross-compile')
     # If not cross-compiling, include the executable target
     sources += 'src/test.c'
