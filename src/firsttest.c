@@ -63,7 +63,7 @@ void load_image(const char *filename, ImageBatch *batch, int num_images)
     // Retrieve shared memory ID from message queue
     int msg_queue_id = msgget(71, 0666);
     if (msg_queue_id == -1)
-    {x
+    {
         perror("msgget error");
         exit(EXIT_FAILURE);
     }
