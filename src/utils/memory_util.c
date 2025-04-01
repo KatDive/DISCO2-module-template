@@ -6,6 +6,7 @@
 #include "util.h"
 
 void finalize() {
+    
     if (SHARED_MEMORY == 0) return;
 
     struct shmid_ds info;
