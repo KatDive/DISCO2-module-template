@@ -12,9 +12,11 @@ rt_dep = meson.get_compiler('c').find_library('rt', required: true)  # Added for
 m_dep = meson.get_compiler('c').find_library('m', required: true) # MATH pow() dependency (fixing error with test)
 libyaml_dep = dependency('yaml-0.1', required: true)  #YAML parser dependency (fixing error with test)
 
+#    'src/firsttest.c',  # Module file (REMEMBER TO CHANGE!)
+
 # Source files
 sources = [
-    'src/firsttest.c',  # Module file (REMEMBER TO CHANGE!)
+
     'src/utils/memory_util.c',
     'src/utils/config_util.c',
     'src/utils/batch_util.c',
@@ -56,9 +58,9 @@ emulator_sources = [
     'src/utils/logger.c'  # Added for debugging consistency
 ]
 
-executable('emulate_camera', emulator_sources,
+emulator_exec = executable('emulate_camera', emulator_sources,
     include_directories: dirs,
-    c_args: cflags + ['-g'],
+    c_args: cflags + ['-g', '-DSHARED_MEMORY=1'], 
     dependencies: [proto_c_dep, rt_dep]
 )
 
@@ -85,10 +87,10 @@ if not get_option('cross-compile')
     message('Called project_name exec...')
     
     # **Run the emulator as a test**
-    # test('run_emulator',
-    #     find_program('emulate_camera'),
-    #     args: ['1', '0', meson.project_source_root() + '/image1.bayerRG'],
-    #     workdir: meson.project_source_root()
-    # )
+     test('run_emulator',
+        emulator_exec,
+        args: ['1', '0', meson.project_source_root() + '/image1.bayerRG'],
+        workdir: meson.project_source_root()
+    )
 
 endif
