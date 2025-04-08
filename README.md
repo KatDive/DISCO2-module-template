@@ -191,3 +191,14 @@ In order to test and debug the module, you must first compile the module as prev
 ```
 Remember to dump a .png image in the workspace root called `input.png`. The test executable can be called with an integer argument to specify how many instances of the image should be added to the `ImageBatch`.
 If the module expects custom parameters, these must be specified in the `config.yaml` file as explained in the [Providing Custom Parameters](#providing-custom-parameters) section.
+
+## Emulate Camera
+The  `emulate_camera` executable needs to be called separatly from the  `*project_name*-exec`, with 3 parameters. 
+Call:
+`./builddir/emulate_camera 1 0 ./image1.bayerRG` (3rd param is image name and can be different, but it needs to be in the root folder)
+if you get this error "No such file or directory", run: `ls -l ./image1.bayerRG`.
+Emulator saves that image to shared memory "queue", for other modules to run it.
+
+## Distortion
+
+Run after `emulate_camera`
