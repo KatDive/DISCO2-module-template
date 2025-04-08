@@ -28,7 +28,15 @@ int main(int argc, char *argv[])
 
     printf("Got time\r\n");
 
+    printf("Opening file...");
+
     FILE *fh = fopen(image_name, "r");
+
+    if (!fh) {
+        perror("fopen failed");
+        return -1;
+    }
+
     // get size of the file in bytes
     fseek(fh, 0, SEEK_END);
     long fsize = ftell(fh);

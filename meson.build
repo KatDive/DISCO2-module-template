@@ -16,7 +16,7 @@ libyaml_dep = dependency('yaml-0.1', required: true)  #YAML parser dependency (f
 
 # Source files
 sources = [
-
+    'src/firsttest.c',
     'src/utils/memory_util.c',
     'src/utils/config_util.c',
     'src/utils/batch_util.c',
@@ -28,8 +28,6 @@ sources = [
     'src/utils/yaml_parser.c',
     'src/module_examples/id.c' #Added for the run() function in first_test (might be the wrong implementation)
 ]
-
-
 
 #Header files
 dirs = include_directories(
@@ -71,7 +69,7 @@ if not get_option('cross-compile')
     # If not cross-compiling, include the executable target
     message('Entered condition...')
 
-    sources += 'src/test.c'
+    #sources += 'src/test.c'
     sources += 'src/utils/yaml_parser.c'
 
     libyaml_dep = dependency('yaml-0.1')
