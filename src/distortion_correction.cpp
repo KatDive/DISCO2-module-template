@@ -22,6 +22,8 @@ void load_calibration_data(cv::Mat &K, cv::Mat &D){
             K_file >> K.at<double>(i, j); //read a double value from the files and stores it in matrix K at row i and column j
     K_file.close();
 
+    //try to see if there is faster way to iterate over the matrix than for loop on C++
+
     //Read distortion coefficients (D) from file
     std::ifstream D_file("distortion_coeffs.txt");
     for (int i = 0; i < 5; ++i)
