@@ -1,5 +1,5 @@
-project('firsttest', 'c', 'cpp')
-project_name = 'firsttest'
+project('emulate_camera', 'c', 'cpp')
+project_name = 'emulate_camera'
 
 # Compiler and linker flags
 cflags = ['-Wall']
@@ -11,12 +11,12 @@ rt_dep = meson.get_compiler('c').find_library('rt', required: true)  # Added for
 # Probaly will need to delete since it is in the if statement
 m_dep = meson.get_compiler('c').find_library('m', required: true) # MATH pow() dependency (fixing error with test)
 libyaml_dep = dependency('yaml-0.1', required: true)  #YAML parser dependency (fixing error with test)
-
+open_cv = dependency('opencv4',required: true)
 #    'src/firsttest.c',  # Module file (REMEMBER TO CHANGE!)
 
 # Source files
 sources = [
-    'src/firsttest.c',
+    'src/distortion_correction.cpp',
     'src/utils/memory_util.c',
     'src/utils/config_util.c',
     'src/utils/batch_util.c',
@@ -24,9 +24,10 @@ sources = [
     'src/utils/metadata_util.c',
     'src/utils/metadata.pb-c.c',
     'src/utils/logger.c',  # Added logger.c for consistency
-
     'src/utils/yaml_parser.c',
-    'src/module_examples/id.c' #Added for the run() function in first_test (might be the wrong implementation)
+    'src/module_examples/id.c', #Added for the run() function in first_test (might be the wrong implementation)
+    'src/emulate_camera.c',
+
 ]
 
 #Header files
@@ -41,7 +42,7 @@ shared_library(
     sources,
     include_directories: dirs,
     c_args: cflags + ['-DSHARED_MEMORY=1'],
-    dependencies: [proto_c_dep,m_dep,libyaml_dep]
+    dependencies: [proto_c_dep,m_dep,libyaml_dep,open_cv,rt_dep]
 )
 
 # **Emulator Executable**
@@ -56,11 +57,11 @@ emulator_sources = [
     'src/utils/logger.c'  # Added for debugging consistency
 ]
 
-emulator_exec = executable('emulate_camera', emulator_sources,
-    include_directories: dirs,
-    c_args: cflags + ['-g', '-DSHARED_MEMORY=1'], 
-    dependencies: [proto_c_dep, rt_dep]
-)
+#emulator_exec = executable('emulate_camera', emulator_sources,
+#    include_directories: dirs,
+#   c_args: cflags + ['-g', '-DSHARED_MEMORY=1'], 
+#   dependencies: [proto_c_dep, rt_dep]
+#)
 
 message('Called emulate camera exec...')
 
@@ -78,17 +79,17 @@ if not get_option('cross-compile')
     # Executable
     executable(project_name + '-exec', sources,
         include_directories: dirs,
-        c_args: cflags + ['-g', '-DSHARED_MEMORY=0'],
+        c_args: cflags + ['-g', '-DSHARED_MEMORY=1'],
         dependencies: [libyaml_dep, m_dep, proto_c_dep]
     )
 
     message('Called project_name exec...')
     
     # **Run the emulator as a test**
-     test('run_emulator',
-        emulator_exec,
-        args: ['1', '0', meson.project_source_root() + '/image1.bayerRG'],
-        workdir: meson.project_source_root()
-    )
+    # test('run_emulator',
+    #    emulator_exec,
+    #    args: ['1', '0', meson.project_source_root() + '/image1.bayerRG'],
+    #    workdir: meson.project_source_root()
+    #)
 
 endif
