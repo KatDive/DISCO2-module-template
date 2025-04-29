@@ -7,8 +7,104 @@
 #include <string.h>
 #include <time.h>
 #include "metadata.pb-c.h"
+#include "module.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+#include "yaml_parser.h"
+
+
+#define FILENAME_INPUT "input.png"
+#define FILENAME_OUTPUT "output"
+#define FILENAME_CONFIG "config.yaml"
 
 extern ImageBatch run(ImageBatch *input_batch, ModuleParameterList *module_parameter_list, int *ipc_error_pipe);
+
+// Imported this funtion from firsttest (also exists in main func in DIPP), currently the function fails do a segmentation error 
+// that happens on line 61 due to some pointer behaviour that I havent figured out yet
+//I tried to debug the error by printing out different data to check if it fails because some variable is NULL (it is not, so far as I debugged)
+//Idk what to do now... 
+// vale variable and pointers before it were just created for tests (cross check original code with firsttest file)
+void save_images(const char *filename_base, const ImageBatch *batch)
+{
+    printf("Starting save image\n");
+    uint32_t offset = 0;
+    int image_index = 0;
+
+    while (image_index < batch->num_images && offset < batch->batch_size)
+    {
+        
+        printf("Entering while loop\n");
+
+        printf("Batch data:=%p\n", (void*)batch->data);
+        printf("Batch size:=%u\n", batch->batch_size);
+        
+        if (batch->batch_size < sizeof(uint32_t)) {
+            fprintf(stderr, "batch->batch_size (%u) is too small\n", batch->batch_size);
+            return;
+        }else{
+            printf("condition not matched\n");
+
+        }
+
+        printf("Batch size + offset:=%p\n", batch->data + offset);
+
+        uint8_t *base = batch->data;       // or (uint8_t *)some_void_ptr;
+        uint8_t *offset_ptr = base + offset;
+
+        printf("Offset pointer:=%p\n", (void *)offset_ptr);
+
+        if ((uintptr_t)offset_ptr % sizeof(uint32_t) != 0) {
+            fprintf(stderr, "Offset pointer is not aligned for uint32_t access\n");
+            return;
+        }else{
+            printf("condition not matched for offset type\n");
+        }
+
+        uint32_t value = *((uint32_t *)offset_ptr);
+
+        printf("Value:=%p\n", (void *)value);
+
+        uint32_t meta_size = *((uint32_t *)(batch->data + offset));
+
+        printf("Reading metdata: size=%u\n", meta_size);
+
+        offset += sizeof(uint32_t); // Move the offset to the start of metadata
+
+
+        Metadata *metadata = metadata__unpack(NULL, meta_size, batch->data + offset);
+        if (!metadata)
+        {
+            fprintf(stderr, "Metadata unpacking failed\n");
+            return;
+        }
+        offset += meta_size; // Move offset to start of image
+
+        printf("Metadata: width=%d, height=%d, channels=%d\n",
+            metadata->width, metadata->height, metadata->channels);
+
+        char filename[20];
+        sprintf(filename, "%s%d.png", filename_base, image_index);
+
+        int stride = metadata->width * metadata->channels * sizeof(uint8_t);
+        int success = stbi_write_png(filename, metadata->width, metadata->height, metadata->channels, batch->data + offset, stride);
+        if (!success)
+        {
+            fprintf(stderr, "Error writing image to %s\n", filename);
+        }
+        else
+        {
+            printf("Image saved as %s\n", filename);
+        }
+
+        offset += metadata->size; // Move the offset to the start of the next image block
+        
+
+        image_index++;
+    }
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -19,6 +115,8 @@ int main(int argc, char *argv[])
     }
 
     char * image_name = argv[3];
+
+    printf("image name\r\n");
 
     // Get timestamp (used for SHM key)
     struct timespec time;
@@ -136,8 +234,8 @@ int main(int argc, char *argv[])
         input_batch.mtype = 1;
     
         // Call the distortion module directly
-        run(&input_batch, &param_list, dummy_error_pipe);
-        
+        ImageBatch result = run(&input_batch, &param_list, dummy_error_pipe);
+        save_images(FILENAME_OUTPUT, &result);
         // Example output handling (optional)
         printf("Distortion module executed successfully\n");
     

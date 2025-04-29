@@ -50,6 +50,7 @@ shared_module('distortion',
   c_args: cflags + ['-DSHARED_MEMORY=1'],
   dependencies: [opencv_dep]
 )
+
 # **Emulator Executable**
 emulator_sources = [
     'src/emulate_camera.c',
@@ -61,12 +62,6 @@ emulator_sources = [
     'src/utils/metadata.pb-c.c',
     'src/utils/logger.c'  # Added for debugging consistency
 ]
-
-#emulator_exec = executable('emulate_camera', emulator_sources,
-#    include_directories: dirs,
-#   c_args: cflags + ['-g', '-DSHARED_MEMORY=1'], 
-#   dependencies: [proto_c_dep, rt_dep]
-#)
 
 message('Called emulate camera exec...')
 
