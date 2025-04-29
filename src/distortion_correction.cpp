@@ -1,8 +1,16 @@
 #include "module.h"
 #include "util.h"
 #include <opencv2/opencv.hpp>
+#include <xtensor/xarray.hpp>
+#include <xtensor/xio.hpp>
+#include <xtensor/xadapt.hpp>
 #include <fstream>
+#include <sstream>
 
+using namespace std;
+using std::ifstream;
+using std::vector;
+using std::string;
 
 /* Define custom error codes */
 enum ERROR_CODE {
@@ -10,26 +18,36 @@ enum ERROR_CODE {
     PLACEHOLDER = 2,
 };
 
+// Function to read a matrix from a file and return it as an xtensor xarray
+xt::xarray<double> read_matrix_from_file(const string& filename, int rows, int cols){
+    ifstream file(filename); //Open the file for reading 
+    vector<double> data;    //Vector to temporarily store matrix data
+    double val;
+
+    //Read value from file and store them in the vector
+    while(file >> val){
+        data.push_back(val); //Push each value into the vector
+    }
+
+    file.close(); // Close the file after reading
+
+    //Convert the flat vector to an xtensor xarray with specified rows and columns
+    return xt::adapt(data, {rows, cols});
+}
+
+// Function to convert xtensor xarray to OpenCV Mat
+cv::Mat xtensor_to_cvmat(const xt::xarray<double>& arr){
+    return cv::Mat(arr.shape(0), arr.shape(1), CV_64F, (void*)arr.data()).clone();
+}
+
 void load_calibration_data(cv::Mat &K, cv::Mat &D){
     //Initialize K as a 3x3 matrix and D as a 1x5 distortion coefficient matrix
-    K = cv::Mat::zeros(3, 3, CV_64F);
-    D = cv::Mat::zeros(1, 5, CV_64F);
+    xt::xarray<double> K_xt = read_matrix_from_file("camera_matrix.txt", 3, 3); //Read 3x3 camera matrix
+    xt::xarray<double> D_xt = read_matrix_from_file("distortion_coeffs.txt", 1, 5); //Read 3x3 camera matrix
 
-    //Read camera matrix (K) from file
-    std::ifstream K_file("camera_matrix.txt"); // ifstream = input file stream from the std = standard library used to read from files
-    for (int i = 0; i < 3; ++i)
-        for (int j = 0; j < 3; ++j)
-            K_file >> K.at<double>(i, j); //read a double value from the files and stores it in matrix K at row i and column j
-    K_file.close();
-
-    //try to see if there is faster way to iterate over the matrix than for loop on C++
-
-    //Read distortion coefficients (D) from file
-    std::ifstream D_file("distortion_coeffs.txt");
-    for (int i = 0; i < 5; ++i)
-        D_file >> D.at<double>(0, i);
-    D_file.close();
-
+    //Convert xtensor matrices to OpenCV cv::Mat objects
+    K = xtensor_to_cvmat(K_xt); //Camera matrix
+    D = xtensor_to_cvmat(D_xt); //Distortion coefficients
 }
 
 /* START MODULE IMPLEMENTATION */
