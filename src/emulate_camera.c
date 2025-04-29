@@ -8,6 +8,8 @@
 #include <time.h>
 #include "metadata.pb-c.h"
 
+extern ImageBatch run(ImageBatch *input_batch, ModuleParameterList *module_parameter_list, int *ipc_error_pipe);
+
 int main(int argc, char *argv[])
 {
     if (argc < 4)
@@ -98,25 +100,47 @@ int main(int argc, char *argv[])
         fread(shmaddr + offset, 1, image_size, fh);
         offset += image_size;
         printf("Copied image\r\n");
+        
     }
 
-    // create msg queue
-    int msg_queue_id;
-    if ((msg_queue_id = msgget(71, 0666 | IPC_CREAT)) == -1)
-    {
-        perror("msgget error");
-    }
-
-    printf("Got queue\r\n");
-
-    // send msg to queue
-    if (msgsnd(msg_queue_id, &data, sizeof(data), 0) == -1)
-    {
-        perror("msgsnd error");
-    }
-
-    printf("Image sent!\n");
-
+       // create msg queue
+       int msg_queue_id;
+       if ((msg_queue_id = msgget(71, 0666 | IPC_CREAT)) == -1)
+       {
+           perror("msgget error");
+       }
+   
+       printf("Got queue\r\n");
+   
+       // send msg to queue
+       if (msgsnd(msg_queue_id, &data, sizeof(data), 0) == -1)
+       {
+           perror("msgsnd error");
+       }
+   
+       printf("Image sent!\n");
+   
+        // Create dummy module parameters and error pipe
+        ModuleParameterList param_list;
+        param_list.n_parameters = 0;
+        param_list.parameters = NULL;
+    
+        int dummy_error_pipe[2] = {-1, -1};
+    
+        // Create input batch
+        ImageBatch input_batch;
+        input_batch.shmid = shmid;
+        input_batch.batch_size = batch_size;
+        input_batch.num_images = data.num_images;
+        input_batch.pipeline_id = data.pipeline_id;
+        input_batch.mtype = 1;
+    
+        // Call the distortion module directly
+        run(&input_batch, &param_list, dummy_error_pipe);
+        
+        // Example output handling (optional)
+        printf("Distortion module executed successfully\n");
+    
     // detach from the shared memory segment
     shmdt(shmaddr);
 }
