@@ -1,5 +1,4 @@
 .so
 .o
 .vscode
-*.png
 builddir/*

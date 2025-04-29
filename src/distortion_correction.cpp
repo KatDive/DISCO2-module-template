@@ -11,6 +11,10 @@ using namespace std;
 using std::ifstream;
 using std::vector;
 using std::string;
+extern "C" {
+    // Declare 'run' as C linkage to be compatible with C code
+    ImageBatch run(ImageBatch *input_batch, ModuleParameterList *module_parameter_list, int *ipc_error_pipe);
+}
 
 /* Define custom error codes */
 enum ERROR_CODE {
@@ -53,6 +57,7 @@ void load_calibration_data(cv::Mat &K, cv::Mat &D){
 /* START MODULE IMPLEMENTATION */
 void module()
 {
+    printf("Entered Module\r\n");
     cv::Mat K, D;
     load_calibration_data(K, D);
     /* Get number of images in input batch */
@@ -132,6 +137,8 @@ void module()
 /* Main function of module (NO NEED TO MODIFY) */
 ImageBatch run(ImageBatch *input_batch, ModuleParameterList *module_parameter_list, int *ipc_error_pipe)
 {
+    printf("Running distortion\r\n");
+
     ImageBatch result_batch;
     result = &result_batch;
     input = input_batch;
@@ -142,6 +149,7 @@ ImageBatch run(ImageBatch *input_batch, ModuleParameterList *module_parameter_li
     module();
 
     finalize();
+    printf("Finalized distortion\r\n");
 
     return result_batch;
 }
