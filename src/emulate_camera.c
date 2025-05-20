@@ -35,45 +35,15 @@ void save_images(const char *filename_base, const ImageBatch *batch)
     while (image_index < batch->num_images && offset < batch->batch_size)
     {
         
-        printf("Entering while loop\n");
-
-        printf("Batch data:=%p\n", (void*)batch->data);
-        printf("Batch size:=%u\n", batch->batch_size);
-        
-        if (batch->batch_size < sizeof(uint32_t)) {
-            fprintf(stderr, "batch->batch_size (%u) is too small\n", batch->batch_size);
-            return;
-        }else{
-            printf("condition not matched\n");
-
-        }
-
-        printf("Batch size + offset:=%p\n", batch->data + offset);
-
-        uint8_t *base = batch->data;       // or (uint8_t *)some_void_ptr;
-        uint8_t *offset_ptr = base + offset;
-
-        printf("Offset pointer:=%p\n", (void *)offset_ptr);
-
-        if ((uintptr_t)offset_ptr % sizeof(uint32_t) != 0) {
-            fprintf(stderr, "Offset pointer is not aligned for uint32_t access\n");
-            return;
-        }else{
-            printf("condition not matched for offset type\n");
-        }
-
-        uint32_t value = *((uint32_t *)offset_ptr);
-
-        printf("Value:=%p\n", (void *)value);
-
         uint32_t meta_size = *((uint32_t *)(batch->data + offset));
 
-        printf("Reading metdata: size=%u\n", meta_size);
 
-        offset += sizeof(uint32_t); // Move the offset to the start of metadata
-
+        printf("Reading metdata: size=%u\r\n", meta_size);
+                offset += sizeof(uint32_t);
 
         Metadata *metadata = metadata__unpack(NULL, meta_size, batch->data + offset);
+
+
         if (!metadata)
         {
             fprintf(stderr, "Metadata unpacking failed\n");
@@ -179,7 +149,9 @@ int main(int argc, char *argv[])
     int shmid = shmget(time.tv_nsec, batch_size, IPC_CREAT | 0666);
     data.shmid = shmid;
     char *shmaddr = shmat(shmid, NULL, 0);
+
     data.batch_size = batch_size;
+
     int offset = 0;
 
     printf("Attached to the shared memory\r\n");
@@ -235,6 +207,8 @@ int main(int argc, char *argv[])
     
         // Call the distortion module directly
         ImageBatch result = run(&input_batch, &param_list, dummy_error_pipe);
+
+        result.data = shmat(result.shmid, NULL, 0);
         save_images(FILENAME_OUTPUT, &result);
         // Example output handling (optional)
         printf("Distortion module executed successfully\n");
