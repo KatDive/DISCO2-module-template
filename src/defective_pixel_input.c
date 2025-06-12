@@ -163,6 +163,30 @@ void module()
 }
 /* END MODULE IMPLEMENTATION */
 
+void process_image(unsigned char *image_data, int width, int height, int channels, int bits_pixel)
+{
+    int threshold = 10; // same default
+
+    if (channels != 1 || bits_pixel != 8)
+    {
+        printf("[ERROR] Unsupported image format: channels=%d, bits_pixel=%d\n", channels, bits_pixel);
+        return;
+    }
+
+    unsigned char *defect_mask = malloc(width * height);
+    if (!defect_mask)
+    {
+        printf("[ERROR] Failed to allocate defect mask\n");
+        return;
+    }
+
+    detect_defects(image_data, width, height, defect_mask, threshold);
+    interpolate_defects(image_data, width, height, defect_mask);
+
+    free(defect_mask);
+}
+
+
 /* Main function of module (NO NEED TO MODIFY) */
 ImageBatch run(ImageBatch *input_batch, ModuleParameterList *module_parameter_list, int *ipc_error_pipe)
 {
@@ -179,3 +203,68 @@ ImageBatch run(ImageBatch *input_batch, ModuleParameterList *module_parameter_li
 
     return result_batch;
 }
+
+#ifdef TESTING_MODULE_STANDALONE
+
+int main(int argc, char **argv)
+{
+    if (argc != 5)
+    {
+        printf("Usage: %s <raw_image_file> <width> <height> <output_file>\n", argv[0]);
+        return 1;
+    }
+
+    const char *input_filename = argv[1];
+    int width = atoi(argv[2]);
+    int height = atoi(argv[3]);
+    const char *output_filename = argv[4];
+
+    size_t image_size = width * height;
+
+    FILE *f = fopen(input_filename, "rb");
+    if (!f)
+    {
+        perror("Error opening input file");
+        return 1;
+    }
+
+    unsigned char *image_data = malloc(image_size);
+    if (!image_data)
+    {
+        printf("Failed to allocate memory for image\n");
+        fclose(f);
+        return 1;
+    }
+
+    size_t read = fread(image_data, 1, image_size, f);
+    fclose(f);
+
+    if (read != image_size)
+    {
+        printf("Error: read %zu bytes, expected %zu\n", read, image_size);
+        free(image_data);
+        return 1;
+    }
+
+    // Process the image
+    process_image(image_data, width, height, 1 /*channels*/, 8 /*bits_pixel*/);
+
+    // Write the output image
+    f = fopen(output_filename, "wb");
+    if (!f)
+    {
+        perror("Error opening output file");
+        free(image_data);
+        return 1;
+    }
+
+    fwrite(image_data, 1, image_size, f);
+    fclose(f);
+
+    free(image_data);
+
+    printf("Processed image saved to %s\n", output_filename);
+    return 0;
+}
+
+#endif

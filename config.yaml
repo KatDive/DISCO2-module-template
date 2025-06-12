@@ -1,3 +1,19 @@
-pipeline_0:
-  - name: distortion
-    path: ./builddir/libdistortion.so
+- key: image_path_input
+  type: 5
+  value: $1
+
+- key: output_path
+  type: 5
+  value: $2
+
+- key: width
+  type: 3
+  value: 2464
+
+- key: height
+  type: 3
+  value: 2056
+
+- key: defective_pixel_input
+  type: 5
+  value: $1
