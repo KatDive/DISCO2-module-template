@@ -1,12 +1,11 @@
 #include "module.h"
 #include "util.h"
 #include <opencv2/opencv.hpp>
+#include <filesystem>
 #include <fstream>
+#include "utils/logger.h"
 
-extern "C" {
-    // Declare 'run' as C linkage to be compatible with C code
-    ImageBatch run(ImageBatch *input_batch, ModuleParameterList *module_parameter_list, int *ipc_error_pipe);
-}
+namespace fs = std::filesystem;
 
 /* Define custom error codes */
 enum ERROR_CODE {
@@ -14,46 +13,57 @@ enum ERROR_CODE {
     PLACEHOLDER = 2,
 };
 
-void load_calibration_data(cv::Mat &K, cv::Mat &D){
-    //Initialize K as a 3x3 matrix and D as a 1x5 distortion coefficient matrix
+void load_calibration_data(cv::Mat &K, cv::Mat &D, Logger *logger) {
+    logger_log(logger, LOG_INFO, "Loading calibration data");
+    
+    // Initialize K as a 3x3 matrix and D as a 1x5 matrix
     K = cv::Mat::zeros(3, 3, CV_64F);
     D = cv::Mat::zeros(1, 5, CV_64F);
 
-    //Read camera matrix (K) from file
-    std::ifstream K_file("camera_matrix.txt"); // ifstream = input file stream from the std = standard library used to read from files
+    // Read camera matrix (K)
+    std::ifstream K_file("camera_matrix.txt");
+    if (!K_file.is_open()) {
+        logger_log(logger, LOG_ERROR, "Failed to open camera_matrix.txt");
+        return;
+    }
     for (int i = 0; i < 3; ++i)
         for (int j = 0; j < 3; ++j)
-            K_file >> K.at<double>(i, j); //read a double value from the files and stores it in matrix K at row i and column j
+            K_file >> K.at<double>(i, j);
     K_file.close();
+    logger_log(logger, LOG_INFO, "Loaded camera matrix");
 
-    //try to see if there is faster way to iterate over the matrix than for loop on C++
-
-    //Read distortion coefficients (D) from file
+    // Read distortion coefficients (D)
     std::ifstream D_file("distortion_coeffs.txt");
+    if (!D_file.is_open()) {
+        logger_log(logger, LOG_ERROR, "Failed to open distortion_coeffs.txt");
+        return;
+    }
     for (int i = 0; i < 5; ++i)
         D_file >> D.at<double>(0, i);
     D_file.close();
-
+    logger_log(logger, LOG_INFO, "Loaded distortion coefficients");
 }
 
 /* START MODULE IMPLEMENTATION */
 void module()
 {
-    printf("Entered Module\r\n");
+    fs::path dir("/home/root/logs/");
+    fs::path file_name("distortion_" + std::to_string(std::time(0)) + ".txt");
+    std::string full_path = (dir / file_name).string();
+    Logger *logger = logger_create(full_path.c_str());
+
+    logger_log_print(logger, LOG_INFO, "Distortion correction module started");
+
     cv::Mat K, D;
-    load_calibration_data(K, D);
-    /* Get number of images in input batch */
+    load_calibration_data(K, D, logger);
+
     int num_images = get_input_num_images();
+    logger_log(logger, LOG_INFO, ("Number of images: " + std::to_string(num_images)).c_str());
 
-    /* Retrieve module parameters by name (defined in config.yaml) */
-    /* int param_1 = get_param_bool("param_name_1");
-    int param_2 = get_param_int("param_name_2");
-    float param_3 = get_param_float("param_name_3");
-    char *param_4 = get_param_string("param_name_4"); */
-
-    /* Example code for iterating a pixel value at a time */
     for (int i = 0; i < num_images; ++i)
     {
+        logger_log(logger, LOG_INFO, ("Processing image " + std::to_string(i)).c_str());
+
         Metadata *input_meta = get_metadata(i);
         int height = input_meta->height;
         int width = input_meta->width;
@@ -62,34 +72,28 @@ void module()
         int bits_pixel = input_meta->bits_pixel;
         char *camera = input_meta->camera;
 
-        /* Get custom metadata values */
-        // int example_bool = get_custom_metadata_bool(input_meta, "example_bool");
-        // int int_example = get_custom_metadata_int(input_meta, "example_int");
-        // float example_float = get_custom_metadata_float(input_meta, "example_float");
-        // char *example_string = get_custom_metadata_string(input_meta, "example_string");
-        
+        logger_log(logger, LOG_INFO, "Getting image data");
         unsigned char *input_image_data;
         size_t size = get_image_data(i, &input_image_data);
+        logger_log(logger, LOG_INFO, "Got image data");
 
-        //Convert raw image data to OpenCV format
-        cv::Mat input_image(height, width, (channels==3) ? CV_8UC3 : CV_8UC1, input_image_data);
+        logger_log(logger, LOG_INFO, "Creating OpenCV Mat from raw data");
+        cv::Mat input_image(height, width, (channels == 3) ? CV_8UC3 : CV_8UC1, input_image_data);
         cv::Mat undistorted_image;
 
-        //Apply distortion correction
+        logger_log(logger, LOG_INFO, "Applying distortion correction");
         cv::undistort(input_image, undistorted_image, K, D);
 
-        /* Define temporary output image */
         unsigned char *output_image_data = (unsigned char *)malloc(size);
-
-        /* Check for malloc error */
         if (output_image_data == NULL)
         {
+            logger_log(logger, LOG_ERROR, "Memory allocation failed");
             signal_error_and_exit(MALLOC_ERR);
         }
 
         memcpy(output_image_data, undistorted_image.data, size);
-        
-        /* Create image metadata before appending */
+        logger_log(logger, LOG_INFO, "Copied undistorted data to output buffer");
+
         Metadata new_meta = METADATA__INIT;
         new_meta.size = size;
         new_meta.width = width;
@@ -99,28 +103,29 @@ void module()
         new_meta.bits_pixel = bits_pixel;
         new_meta.camera = camera;
 
-        /* Add custom metadata key-value */
-        char key[] = "distortion_corrected";
-        add_custom_metadata_bool(&new_meta, key, true);
-/*        add_custom_metadata_int(&new_meta, "example_int", 20);
-        add_custom_metadata_float(&new_meta, "example_float", 20.5);
-        add_custom_metadata_string(&new_meta, "example_string", "TEST"); */
+        add_custom_metadata_bool(&new_meta, "distortion_corrected", true);
 
-        /* Append the image to the result batch */
+        logger_log(logger, LOG_INFO, "Appending result image");
         append_result_image(output_image_data, size, &new_meta);
+        logger_log(logger, LOG_INFO, "Appended result image");
 
-        /* Remember to free any allocated memory */
+        logger_log(logger, LOG_INFO, "Freeing input memory");
         free(input_image_data);
+        logger_log(logger, LOG_INFO, "Freeing output memory");
         free(output_image_data);
+
+        logger_log(logger, LOG_INFO, ("Finished image " + std::to_string(i)).c_str());
     }
+
+    logger_log_print(logger, LOG_INFO, "Distortion correction module finished");
+    logger_flush(logger);
+    logger_destroy(logger);
 }
 /* END MODULE IMPLEMENTATION */
 
 /* Main function of module (NO NEED TO MODIFY) */
 ImageBatch run(ImageBatch *input_batch, ModuleParameterList *module_parameter_list, int *ipc_error_pipe)
 {
-    printf("Running distortion\r\n");
-
     ImageBatch result_batch;
     result = &result_batch;
     input = input_batch;
@@ -131,7 +136,5 @@ ImageBatch run(ImageBatch *input_batch, ModuleParameterList *module_parameter_li
     module();
 
     finalize();
-    printf("Finalized distortion\r\n");
-
     return result_batch;
 }
