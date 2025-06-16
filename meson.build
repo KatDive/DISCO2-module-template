@@ -1,9 +1,9 @@
-project('preprocessing_pipeline', 'c', 'cpp')
-project_name = 'preprocessing_pipeline'
+project('test_pipeline', 'c', 'cpp')
+project_name = 'test_pipeline'
 
 # Compiler and linker flags
-cflags = ['-Wall']
-cppflags = ['-Wall', '-std=c++17']  # Ensure C++17 for filesystem
+cflags = ['-Wall', '-g', '-O0']
+cppflags = ['-Wall', '-std=c++17', '-g', '-O0']
 
 # Dependencies
 cc = meson.get_compiler('c')
@@ -23,7 +23,7 @@ c_sources = [
 ]
 
 # ✏️ Change this to switch the active module!
-active_module = 'src/defective_pixel.c'  # <-- Change this to switch modules, e.g. 'src/distortion_correction.cpp'
+active_module = 'src/defective_pixel_input.c'  # <-- Change this to switch modules, e.g. 'src/distortion_correction.cpp'
 
 # Decide whether to compile it as C or C++
 use_cpp = active_module.endswith('.cpp')
